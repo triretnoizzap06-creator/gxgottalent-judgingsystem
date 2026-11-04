@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Open access, same as the original site (no login).
+    // Anyone with the link can read and write, so only share the link with the event team.
+    match /{collection}/{docId} {
+      allow read, write: if collection in ['judges', 'performances', 'scores', 'settings'];
+    }
+  }
+}
