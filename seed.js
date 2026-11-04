@@ -46,7 +46,7 @@ export const SEED_JUDGES = judges.map(([name, stage, sortOrder, active], i) => (
 // Audition rundown (auditiongotrundown.figma.site), slot 01 → 20.
 // `reg` is the registration code above; the app's code P01–P20 follows the
 // slot order, so every list and dropdown shows performers in rundown order.
-export const RUNDOWN_VERSION = 2;
+export const RUNDOWN_VERSION = 3;
 const R = (reg, session, slotTime, standbyTime, details, division, extra = {}) => ({
   reg, session, slotTime, standbyTime, details, division, ...extra,
 });
@@ -74,11 +74,25 @@ export const AUDITION_RUNDOWN = [
 ];
 
 // Fields the rundown sets on a performance (code + the rundown details).
+// Finds which registration entry a stored performance is, whatever its document
+// ID (the database may hold IDs from the original Figma site). Order of checks:
+// saved registrationCode → exact performance name → the old P01–P20 code.
+const norm = (x) => String(x ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+export function registrationCodeFor(data, docId) {
+  if (data.registrationCode) return data.registrationCode;
+  const byName = performances.find((p) => norm(p[1]) === norm(data.name));
+  if (byName) return byName[0];
+  const byId = performances.find((p) => p[0].toLowerCase() === String(docId).toLowerCase());
+  if (byId) return byId[0];
+  if (/^P\d{2}$/.test(data.code ?? "")) return data.code;
+  return null;
+}
+
 export function rundownPatch(registrationCode, currentName) {
   const i = AUDITION_RUNDOWN.findIndex((r) => r.reg === registrationCode);
   if (i < 0) return null;
   const { reg, name, title, ...rest } = AUDITION_RUNDOWN[i];
-  const patch = { code: `P${String(i + 1).padStart(2, "0")}`, ...rest };
+  const patch = { code: `P${String(i + 1).padStart(2, "0")}`, registrationCode: reg, ...rest };
   if (name && (currentName === undefined || currentName === "TBC")) Object.assign(patch, { name, title });
   return patch;
 }

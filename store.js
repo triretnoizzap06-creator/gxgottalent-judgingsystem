@@ -18,7 +18,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db, isConfigured } from "./firebase.js";
-import { SEED_JUDGES, SEED_PERFORMANCES, RUNDOWN_VERSION, rundownPatch } from "./seed.js";
+import { SEED_JUDGES, SEED_PERFORMANCES, RUNDOWN_VERSION, rundownPatch, registrationCodeFor } from "./seed.js";
 
 const STATE_REF = () => doc(db, "settings", "state");
 
@@ -89,12 +89,22 @@ async function applyRundownOrder(perfDocs) {
   const state = (await getDoc(STATE_REF())).data() || {};
   if ((state.rundownVersion ?? 0) >= RUNDOWN_VERSION) return;
   const batch = writeBatch(db);
+  const used = new Set();
+  let matched = 0;
   perfDocs.forEach((d) => {
-    const patch = rundownPatch(d.id.toUpperCase(), d.data().name);
-    if (patch) batch.set(d.ref, patch, { merge: true });
+    const reg = registrationCodeFor(d.data(), d.id);
+    if (!reg || used.has(reg)) return;
+    const patch = rundownPatch(reg, d.data().name);
+    if (!patch) return;
+    used.add(reg);
+    matched += 1;
+    batch.set(d.ref, patch, { merge: true });
   });
-  batch.set(STATE_REF(), { rundownVersion: RUNDOWN_VERSION }, { merge: true });
+  // Only mark the update as done when it actually matched performances,
+  // so a database that matches nothing is retried instead of skipped forever.
+  if (matched) batch.set(STATE_REF(), { rundownVersion: RUNDOWN_VERSION }, { merge: true });
   await batch.commit();
+  console.info(`[GX Judging] Rundown order applied to ${matched} performances.`);
 }
 
 /* ------------------------------------------------------------------ */
