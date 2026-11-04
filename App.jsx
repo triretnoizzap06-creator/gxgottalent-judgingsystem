@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
+import globalxtremeLogo from "./globalxtreme-logo.png";
 import {
   useJudgingData,
   computeFinalScore,
@@ -931,6 +932,35 @@ function Podium({ rows }) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Connection problem screen                                           */
+/* ------------------------------------------------------------------ */
+
+function ConnectionNotice({ error }) {
+  const missing = error === "missing-config";
+  const denied = error === "permission-denied";
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#F8F8F5] p-6 text-[#111111]">
+      <div className="w-full max-w-xl rounded-3xl border border-[#E4E4E4] bg-white p-8">
+        <img src={globalxtremeLogo} alt="GlobalXtreme" width={597} height={103} className="h-auto w-44" />
+        <p className="mt-8 inline-flex rounded-full bg-[#FFC7C4] px-3 py-2 text-[10px] font-black uppercase tracking-[.22em]">
+          Database not connected
+        </p>
+        <h1 className="mt-4 text-3xl font-black tracking-[-.04em]">
+          {missing ? "Firebase settings are missing" : denied ? "Firestore blocked access" : "Could not reach Firestore"}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-[#666666]">
+          {missing
+            ? "Add the six VITE_FIREBASE_* environment variables in Vercel → Project → Settings → Environment Variables, then redeploy."
+            : denied
+              ? "Open Firebase Console → Firestore Database → Rules, paste the contents of firestore.rules, and publish."
+              : `Check the Firebase project settings and your connection. Error: ${error}`}
+        </p>
+      </div>
+    </main>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* App                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -943,6 +973,7 @@ export default function App() {
     topFiveIds,
     topFiveIsManual,
     event,
+    error,
   } = useJudgingData();
 
   const [view, setView] = useState("dashboard");
@@ -1065,13 +1096,15 @@ export default function App() {
   const finalJudgeCount = judges.filter((j) => j.stage === "Top 5 Final" && j.active).length;
   const auditionJudgeCount = judges.filter((j) => j.stage === "Audition" && j.active).length;
 
+  if (error) return <ConnectionNotice error={error} />;
+
   return (
     <main className="min-h-screen bg-[#F8F8F5] text-[#111111]">
       <div className="h-1.5 bg-[#FFEC6B]" />
       <header className="sticky top-0 z-40 border-b border-[#E4E4E4] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-4 py-4 max-[480px]:flex-col max-[480px]:items-stretch sm:px-5 lg:px-10">
           <button onClick={() => setView("dashboard")} className="flex items-center gap-4 text-left max-[480px]:justify-center">
-            <img src={`${import.meta.env.BASE_URL}globalxtreme-logo.png`} alt="GlobalXtreme" width={597} height={103} className="h-auto w-28 sm:w-44" />
+            <img src={globalxtremeLogo} alt="GlobalXtreme" width={597} height={103} className="h-auto w-28 sm:w-44" />
             <span className="hidden h-8 w-px bg-[#E4E4E4] sm:block" />
             <span className="hidden sm:block">
               <span className="block text-[9px] font-bold uppercase tracking-[.24em] text-[#777777]">{event.eventLabel}</span>

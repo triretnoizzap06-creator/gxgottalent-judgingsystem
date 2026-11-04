@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #11111140 transparent;
+  }
+  body {
+    background: #f8f8f5;
+  }
+  button,
+  select,
+  input,
+  textarea {
+    font: inherit;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+.score-range {
+  appearance: none;
+  background: linear-gradient(90deg, #111 0 50%, #deded8 50%);
+  border-radius: 999px;
+  height: 4px;
+}
+.score-range::-webkit-slider-thumb {
+  appearance: none;
+  background: #f8f8f5;
+  border: 4px solid #111;
+  border-radius: 999px;
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 4px #1111111f;
+}
+.score-range::-moz-range-thumb {
+  background: #f8f8f5;
+  border: 4px solid #111;
+  border-radius: 999px;
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 4px #1111111f;
+}
+
+.field {
+  background: #f8f8f5;
+  border: 1px solid #e4e4e4;
+  border-radius: 0.75rem;
+  outline: none;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+}
+.field:focus {
+  border-color: #111;
+}

@@ -1,26 +1,36 @@
 # GX Got Talent — Judging System
 
-Rebuild of gxjudgingsystem.figma.site with React + Vite + Tailwind and Firebase Firestore.
+React + Vite + Tailwind, data in Firebase Firestore (real-time for every judge).
 
-## 1. Logos
+## Project structure (flat — every file sits in the repo root)
 
-Both logos are already in `public/` (`globalxtreme-logo.png` and `gx-event-logo.png`).
+```
+index.html          entry page → loads ./main.jsx
+main.jsx            React entry point
+App.jsx             all screens (dashboard, scoring, leaderboard, golden ticket, top 5, history, settings)
+store.js            Firestore data layer + live listeners
+firebase.js         Firebase init from VITE_FIREBASE_* env vars
+seed.js             8 judges + 20 performances, written once into an empty database
+exportExcel.js      Export Excel (4 sheets)
+index.css           Tailwind + custom styles
+globalxtreme-logo.png, gx-event-logo.png
+vite.config.js, vercel.json, package.json, package-lock.json
+firestore.rules     paste into Firebase Console → Firestore → Rules
+```
 
-## 2. Firebase
+There are no subfolders on purpose, so uploading with GitHub's "Add files via upload" can't lose any paths.
 
-1. Firebase Console → create/open a project → **Firestore Database** → Create database.
-2. Firestore → **Rules** → paste the contents of `firestore.rules` → Publish.
-3. Project settings → Your apps → add a **Web app** → copy the config values.
+## Deploy
 
-On first open, the app fills the database automatically with the 8 judges and 20 performances (P01–P20).
+1. **GitHub**: delete the old files in the repo, then upload every file from this ZIP. The 16 visible files are required; `.gitignore` and `.env.example` are optional.
+2. **Firebase**: Firestore Database → Create database → Rules → paste `firestore.rules` → Publish.
+   Project settings → Your apps → Web app → copy the config.
+3. **Vercel** → Project → Settings → Environment Variables, add all six (Production + Preview):
+   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
+   `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`
+4. Redeploy. Vercel uses `vercel.json` (Vite, `npm run build`, output `dist`).
 
-Collections used: `judges`, `performances`, `scores`, `settings/state` (Golden Ticket + Top 5).
-
-## 3. GitHub + Vercel
-
-1. Upload all files in this folder (except `node_modules`/`dist`) to the repo `gxgottalent-judgingsystem`.
-2. Vercel → project → **Settings → Environment Variables**, add the 6 values from `.env.example` with your Firebase config.
-3. Redeploy. Vercel detects Vite automatically (build: `npm run build`, output: `dist`).
+If the variables are missing, the site shows a "Firebase settings are missing" screen instead of the app.
 
 ## Run locally
 
@@ -29,5 +39,3 @@ npm install
 cp .env.example .env   # fill in the Firebase values
 npm run dev
 ```
-
-Without the Firebase values the app still runs, but data is only saved in that browser.
