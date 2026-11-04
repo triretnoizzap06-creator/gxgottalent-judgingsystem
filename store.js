@@ -18,7 +18,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db, isConfigured } from "./firebase.js";
-import { SEED_JUDGES, SEED_PERFORMANCES } from "./seed.js";
+import { SEED_JUDGES, SEED_PERFORMANCES, RUNDOWN_VERSION, rundownPatch } from "./seed.js";
 
 const STATE_REF = () => doc(db, "settings", "state");
 
@@ -65,17 +65,36 @@ async function seedIfEmpty() {
   seeding = true;
   try {
     const [p, j] = await Promise.all([getDocs(collection(db, "performances")), getDocs(collection(db, "judges"))]);
-    if (!p.empty || !j.empty) return;
-    const batch = writeBatch(db);
-    SEED_PERFORMANCES.forEach((x) => batch.set(doc(db, "performances", x.id), x));
-    SEED_JUDGES.forEach((x) => batch.set(doc(db, "judges", x.id), x));
-    batch.set(STATE_REF(), EMPTY_STATE, { merge: true });
-    await batch.commit();
+    if (p.empty && j.empty) {
+      const batch = writeBatch(db);
+      SEED_PERFORMANCES.forEach((x) => batch.set(doc(db, "performances", x.id), x));
+      SEED_JUDGES.forEach((x) => batch.set(doc(db, "judges", x.id), x));
+      batch.set(STATE_REF(), { ...EMPTY_STATE, rundownVersion: RUNDOWN_VERSION }, { merge: true });
+      await batch.commit();
+      return;
+    }
+    await applyRundownOrder(p.docs);
   } catch (e) {
     console.error("Seeding failed", e);
   } finally {
     seeding = false;
   }
+}
+
+// One-time update for a database seeded before the audition rundown existed:
+// renumbers the original 20 performances to their rundown slot (P01–P20)
+// and fills in session, slot time, standby time, details and division.
+// Performances added later through Settings are left as they are.
+async function applyRundownOrder(perfDocs) {
+  const state = (await getDoc(STATE_REF())).data() || {};
+  if ((state.rundownVersion ?? 0) >= RUNDOWN_VERSION) return;
+  const batch = writeBatch(db);
+  perfDocs.forEach((d) => {
+    const patch = rundownPatch(d.id.toUpperCase(), d.data().name);
+    if (patch) batch.set(d.ref, patch, { merge: true });
+  });
+  batch.set(STATE_REF(), { rundownVersion: RUNDOWN_VERSION }, { merge: true });
+  await batch.commit();
 }
 
 /* ------------------------------------------------------------------ */
@@ -198,6 +217,10 @@ export function savePerformance(input, existing) {
       category: input.category,
       format: input.format,
       division: String(input.division ?? "").trim(),
+      details: String(input.details ?? "").trim(),
+      session: String(input.session ?? "").trim(),
+      slotTime: String(input.slotTime ?? "").trim(),
+      standbyTime: String(input.standbyTime ?? "").trim(),
       performers,
       pic: String(input.pic ?? "").trim(),
       performerCount:

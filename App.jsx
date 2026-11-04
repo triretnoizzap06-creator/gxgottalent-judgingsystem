@@ -38,6 +38,7 @@ export function categoryLabel(c) {
   return c === "Pertunjukan Tradisional" ? "Traditional Performance" : c === "Lainnya" ? "Other" : c;
 }
 export function divisionLabel(p) {
+  if (p.division?.trim()) return p.division.trim();
   const divs = [...new Set((p.performers ?? []).map((x) => x.division?.trim()).filter((x) => !!x))];
   return divs.length > 1 ? `Mixed divisions · ${divs.join(", ")}` : divs[0] ?? p.division;
 }
@@ -407,6 +408,10 @@ function Settings({ event, judges, performances, onSaved }) {
     category: "Singing / Vocal",
     format: "Individu",
     division: "",
+    details: "",
+    session: "",
+    slotTime: "",
+    standbyTime: "",
     performers: "",
     pic: "",
   });
@@ -609,7 +614,8 @@ function Settings({ event, judges, performances, onSaved }) {
                       {p.code} · {p.name}
                     </p>
                     <p className="mt-1 text-xs text-[#777777]">
-                      {categoryLabel(p.category)} · {divisionLabel(p)}
+                      {p.slotTime ? `${p.slotTime} · ` : ""}
+                      {p.details || categoryLabel(p.category)} · {divisionLabel(p)}
                     </p>
                   </div>
                   <button
@@ -621,7 +627,11 @@ function Settings({ event, judges, performances, onSaved }) {
                         title: p.title,
                         category: p.category,
                         format: p.format,
-                        division: p.division,
+                        division: p.division ?? "",
+                        details: p.details ?? "",
+                        session: p.session ?? "",
+                        slotTime: p.slotTime ?? "",
+                        standbyTime: p.standbyTime ?? "",
                         performers: (p.performers ?? []).map((x) => x.name).join(", "),
                         pic: p.pic,
                       })
@@ -685,8 +695,41 @@ function Settings({ event, judges, performances, onSaved }) {
                   ))}
                 </select>
               </Field>
-              <Field label="Division">
-                <input className="field" value={perf.division} onChange={(e) => setPerf({ ...perf, division: e.target.value })} />
+              <Field label="Performance details">
+                <input
+                  className="field"
+                  placeholder="e.g. Choir & Dance"
+                  value={perf.details}
+                  onChange={(e) => setPerf({ ...perf, details: e.target.value })}
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Division">
+                  <input className="field" value={perf.division} onChange={(e) => setPerf({ ...perf, division: e.target.value })} />
+                </Field>
+              </div>
+              <Field label="Session">
+                <select className="field" value={perf.session} onChange={(e) => setPerf({ ...perf, session: e.target.value })}>
+                  <option value="">—</option>
+                  <option>Session 01</option>
+                  <option>Session 02</option>
+                </select>
+              </Field>
+              <Field label="Slot time">
+                <input
+                  className="field"
+                  placeholder="17.00–17.10"
+                  value={perf.slotTime}
+                  onChange={(e) => setPerf({ ...perf, slotTime: e.target.value })}
+                />
+              </Field>
+              <Field label="Standby time">
+                <input
+                  className="field"
+                  placeholder="16.50"
+                  value={perf.standbyTime}
+                  onChange={(e) => setPerf({ ...perf, standbyTime: e.target.value })}
+                />
               </Field>
               <div className="sm:col-span-2">
                 <Field label="Performers (comma-separated)">
@@ -740,6 +783,9 @@ function PerformanceCard({ performance: p }) {
             <div className="mb-3 flex items-center gap-2">
               <span className="rounded-md bg-[#FFEC6B] px-2 py-1 text-[10px] font-black">{p.code}</span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#777777]">{categoryLabel(p.category)}</span>
+              {p.details && (
+                <span className="rounded-md bg-[#F1F1ED] px-2 py-1 text-[10px] font-black uppercase tracking-wider">{p.details}</span>
+              )}
             </div>
             <h2 className="text-2xl font-black tracking-tight">{p.name}</h2>
             <p className="mt-2 text-sm text-[#666666]">{p.title}</p>
@@ -764,9 +810,11 @@ function PerformanceCard({ performance: p }) {
             )}
           </div>
         </div>
-        <div className="flex gap-8 sm:border-l sm:border-[#E4E4E4] sm:pl-7">
+        <div className="flex flex-wrap gap-x-8 gap-y-4 sm:border-l sm:border-[#E4E4E4] sm:pl-7">
           <MiniStat label="Format" value={fmt} />
           <MiniStat label="Count" value={p.performerCount} />
+          {p.slotTime && <MiniStat label={p.session ? `${p.session} · Slot` : "Slot"} value={p.slotTime} />}
+          {p.standbyTime && <MiniStat label="Standby" value={p.standbyTime} />}
         </div>
       </div>
     </article>
@@ -861,7 +909,10 @@ function LeaderboardTable({ rows, judgeTotal, goldenTicketId }) {
                       <p className="mt-1 max-w-64 truncate text-xs text-[#777777]">{r.performance.title}</p>
                     </td>
                     <td className="max-w-48 px-5 py-4 text-xs text-[#666666]">{divisionLabel(r.performance)}</td>
-                    <td className="px-5 py-4 text-xs">{categoryLabel(r.performance.category)}</td>
+                    <td className="px-5 py-4 text-xs">
+                      {categoryLabel(r.performance.category)}
+                      {r.performance.details && <p className="mt-1 text-[#777777]">{r.performance.details}</p>}
+                    </td>
                     {[r.pq, r.co, r.ev, r.sp].map((v, k) => (
                       <td key={k} className="px-3 py-4 text-xs tabular-nums text-[#777777]">
                         {v ? v.toFixed(1) : "—"}
@@ -1202,7 +1253,8 @@ export default function App() {
                       <select value={currentPerf?.id ?? ""} onChange={(e) => setPerfId(e.target.value)} className="field">
                         {stagePerformances.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.code} · {p.name} · {p.category}
+                            {p.code} · {p.slotTime ? `${p.slotTime} · ` : ""}
+                            {p.name} · {p.details || p.category}
                           </option>
                         ))}
                       </select>

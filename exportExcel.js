@@ -24,7 +24,7 @@ export function exportExcel({ performances, judges, scores, auditionRows, finali
   ];
 
   const performers = [
-    ["Code", "Performance", "Title", "Category", "Format", "Division", "Performer Count", "Performers", "PIC"],
+    ["Code", "Performance", "Title", "Category", "Format", "Division", "Performer Count", "Performers", "PIC", "Session", "Slot Time", "Standby", "Performance Details"],
     ...performances.map((p) => [
       p.code,
       p.name,
@@ -35,6 +35,10 @@ export function exportExcel({ performances, judges, scores, auditionRows, finali
       p.performerCount,
       (p.performers ?? []).map((x) => x.name).join(", "),
       p.pic,
+      p.session ?? "",
+      p.slotTime ?? "",
+      p.standbyTime ?? "",
+      p.details ?? "",
     ]),
   ];
 
