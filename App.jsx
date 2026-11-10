@@ -214,7 +214,7 @@ function Dashboard({ event, judges, performances, auditionComplete, finalComplet
   const cards = [
     {
       stage: "Audition",
-      title: "Dashboard Audition",
+      title: "Audition",
       description: event.auditionDescription,
       date: event.auditionDate,
       icon: <MicIcon />,
@@ -226,7 +226,7 @@ function Dashboard({ event, judges, performances, auditionComplete, finalComplet
     },
     {
       stage: "Top 5 Final",
-      title: "Dashboard Top 5 Final",
+      title: "Top 5 Final",
       description: event.finalDescription,
       date: event.finalDate,
       icon: <TrophyIcon />,
@@ -1190,11 +1190,11 @@ export default function App() {
                   else if (key === "scoring-final") openStage("Top 5 Final", key);
                   else setView(key);
                 }}
-                className={`relative shrink-0 px-3 py-3 text-[9px] font-extrabold uppercase tracking-[.06em] lg:px-4 lg:py-4 lg:text-xs lg:tracking-[.1em] ${
+                className={`relative shrink-0 px-3 py-3 text-[9px] font-extrabold uppercase tracking-[.06em] lg:px-2.5 lg:py-4 lg:text-[11px] lg:tracking-[.05em] xl:px-4 xl:text-xs xl:tracking-[.1em] ${
                   view === key ? "text-[#111111]" : "text-[#777777] hover:text-[#111111]"
                 }`}
               >
-                <span className="mr-1 text-[8px] opacity-40 lg:mr-2 lg:text-[10px]">0{i + 1}</span>
+                <span className="mr-1 text-[8px] opacity-40 lg:mr-1.5 lg:text-[9px] xl:mr-2 xl:text-[10px]">0{i + 1}</span>
                 {label}
                 {view === key && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-[#FFEC6B]" />}
               </button>
@@ -1236,7 +1236,7 @@ export default function App() {
               }
             />
             {stage !== "Top 5 Final" || stagePerformances.length ? (
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_390px]">
                 <div className="space-y-6">
                   <div className="grid gap-4 rounded-3xl border border-[#E4E4E4] bg-white p-5 sm:grid-cols-2">
                     <Field label="Judge">
@@ -1312,7 +1312,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <aside className="xl:sticky xl:top-36 xl:self-start">
+                <aside className="lg:sticky lg:top-36 lg:self-start">
                   <div className="overflow-hidden rounded-3xl border border-[#E4E4E4] bg-white shadow-xl shadow-black/5">
                     <div className="border-b border-[#E4E4E4] bg-[#FFF0A6] p-6">
                       <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#666666]">Live score</p>

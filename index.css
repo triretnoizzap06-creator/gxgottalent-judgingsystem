@@ -24,12 +24,14 @@
 }
 
 .score-range {
+  -webkit-appearance: none;
   appearance: none;
   background: linear-gradient(90deg, #111 0 50%, #deded8 50%);
   border-radius: 999px;
   height: 4px;
 }
 .score-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
   appearance: none;
   background: #f8f8f5;
   border: 4px solid #111;

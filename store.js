@@ -13,6 +13,8 @@ import {
   deleteDoc,
   getDoc,
   getDocs,
+  getDocsFromServer,
+  getDocFromServer,
   query,
   where,
   writeBatch,
@@ -54,18 +56,26 @@ function requireDb() {
 }
 
 /* ------------------------------------------------------------------ */
-/* First-run seed: fills an empty database with the 8 judges and       */
-/* 20 performances from the original site. Fixed IDs keep it safe if   */
-/* several devices open the app at the same time.                      */
+/* First-run seed + data maintenance                                   */
 /* ------------------------------------------------------------------ */
 
-let seeding = false;
-async function seedIfEmpty() {
-  if (seeding) return;
-  seeding = true;
+// The seed only runs on a brand-new database. Every read here goes to the
+// server (getDocsFromServer / getDocFromServer): a device that is offline or
+// still connecting gets an error instead of an empty cached result, so it can
+// never mistake a full database for an empty one and add a second copy.
+// Once settings/state exists, the database counts as set up and is never seeded again.
+let running = false;
+async function prepareDatabase() {
+  if (running) return;
+  running = true;
   try {
-    const [p, j] = await Promise.all([getDocs(collection(db, "performances")), getDocs(collection(db, "judges"))]);
-    if (p.empty && j.empty) {
+    const stateSnap = await getDocFromServer(STATE_REF());
+    const [p, j, sc] = await Promise.all([
+      getDocsFromServer(collection(db, "performances")),
+      getDocsFromServer(collection(db, "judges")),
+      getDocsFromServer(collection(db, "scores")),
+    ]);
+    if (!stateSnap.exists() && p.empty && j.empty) {
       const batch = writeBatch(db);
       SEED_PERFORMANCES.forEach((x) => batch.set(doc(db, "performances", x.id), x));
       SEED_JUDGES.forEach((x) => batch.set(doc(db, "judges", x.id), x));
@@ -73,38 +83,96 @@ async function seedIfEmpty() {
       await batch.commit();
       return;
     }
-    await applyRundownOrder(p.docs);
+    const state = stateSnap.data() || {};
+    if ((state.rundownVersion ?? 0) < RUNDOWN_VERSION) await applyRundown(p.docs, j.docs, sc.docs, state);
   } catch (e) {
-    console.error("Seeding failed", e);
+    console.warn("[GX Judging] Database check skipped (offline or not reachable).", e?.code || e);
   } finally {
-    seeding = false;
+    running = false;
   }
 }
 
-// One-time update for a database seeded before the audition rundown existed:
-// renumbers the original 20 performances to their rundown slot (P01–P20)
-// and fills in session, slot time, standby time, details and division.
-// Performances added later through Settings are left as they are.
-async function applyRundownOrder(perfDocs) {
-  const state = (await getDoc(STATE_REF())).data() || {};
-  if ((state.rundownVersion ?? 0) >= RUNDOWN_VERSION) return;
+const SEED_ID = /^(p\d{2}|judge-\d{2})$/;
+
+// Picks which copy of a duplicated record to keep: the one with scores first,
+// then the original (non-seed) document.
+function pickKeeper(docs, scoreCount) {
+  return [...docs].sort(
+    (a, b) => (scoreCount(b.id) > 0) - (scoreCount(a.id) > 0) || SEED_ID.test(a.id) - SEED_ID.test(b.id)
+  )[0];
+}
+
+// Applies the current audition rundown (order P01–P20, names, session, slot,
+// standby, details, division) and removes duplicate copies of the same
+// performance or judge. A duplicate is only deleted when no score uses it.
+// Performances added later through Settings (no registration code) are left alone.
+async function applyRundown(perfDocs, judgeDocs, scoreDocs, state) {
+  const scoresFor = (field) => (id) => scoreDocs.filter((s) => s.data()[field] === id).length;
+  const perfScores = scoresFor("performanceId");
+  const judgeScores = scoresFor("judgeId");
   const batch = writeBatch(db);
-  const used = new Set();
-  let matched = 0;
+  let updated = 0;
+  let removed = 0;
+
+  const byReg = new Map();
   perfDocs.forEach((d) => {
     const reg = registrationCodeFor(d.data(), d.id);
-    if (!reg || used.has(reg)) return;
-    const patch = rundownPatch(reg, d.data().name);
-    if (!patch) return;
-    used.add(reg);
-    matched += 1;
-    batch.set(d.ref, patch, { merge: true });
+    if (!reg || !rundownPatch(reg)) return;
+    byReg.set(reg, [...(byReg.get(reg) ?? []), d]);
   });
-  // Only mark the update as done when it actually matched performances,
-  // so a database that matches nothing is retried instead of skipped forever.
-  if (matched) batch.set(STATE_REF(), { rundownVersion: RUNDOWN_VERSION }, { merge: true });
+  const removedPerfIds = [];
+  byReg.forEach((docs, reg) => {
+    const keep = pickKeeper(docs, perfScores);
+    batch.set(keep.ref, rundownPatch(reg), { merge: true });
+    updated += 1;
+    docs
+      .filter((d) => d.id !== keep.id && perfScores(d.id) === 0)
+      .forEach((d) => {
+        batch.delete(d.ref);
+        removedPerfIds.push(d.id);
+        removed += 1;
+      });
+  });
+
+  const byJudge = new Map();
+  judgeDocs.forEach((d) => {
+    const key = `${String(d.data().name ?? "").trim().toLowerCase()}|${d.data().stage}`;
+    byJudge.set(key, [...(byJudge.get(key) ?? []), d]);
+  });
+  byJudge.forEach((docs) => {
+    if (docs.length < 2) return;
+    const keep = pickKeeper(docs, judgeScores);
+    docs
+      .filter((d) => d.id !== keep.id && judgeScores(d.id) === 0)
+      .forEach((d) => {
+        batch.delete(d.ref);
+        removed += 1;
+      });
+  });
+
+  const statePatch = {};
+  if (removedPerfIds.includes(state.goldenTicketId)) statePatch.goldenTicketId = null;
+  if ((state.topFiveIds ?? []).some((id) => removedPerfIds.includes(id)))
+    statePatch.topFiveIds = state.topFiveIds.filter((id) => !removedPerfIds.includes(id));
+  // Only mark the update as done when it matched performances, so a database
+  // that matches nothing is retried instead of skipped forever.
+  if (updated) statePatch.rundownVersion = RUNDOWN_VERSION;
+  if (Object.keys(statePatch).length) batch.set(STATE_REF(), statePatch, { merge: true });
   await batch.commit();
-  console.info(`[GX Judging] Rundown order applied to ${matched} performances.`);
+  console.info(`[GX Judging] Rundown applied to ${updated} performances, ${removed} duplicates removed.`);
+}
+
+// Safety net for the screen: never show two copies of the same performance
+// or judge, even before the cleanup above has run.
+function uniqueBy(items, keyOf) {
+  const seen = new Map();
+  items.forEach((x) => {
+    const key = keyOf(x);
+    if (!key) return seen.set(Symbol(), x);
+    const prev = seen.get(key);
+    if (!prev || (SEED_ID.test(prev.id) && !SEED_ID.test(x.id))) seen.set(key, x);
+  });
+  return [...seen.values()];
 }
 
 /* ------------------------------------------------------------------ */
@@ -130,7 +198,7 @@ export function useJudgingData() {
       console.error(e);
       setData((d) => ({ ...d, error: e?.code || e?.message || "firestore-error" }));
     };
-    seedIfEmpty();
+    prepareDatabase();
     const unsubs = [
       onSnapshot(
         collection(db, "judges"),
@@ -152,10 +220,10 @@ export function useJudgingData() {
     return () => unsubs.forEach((u) => u());
   }, []);
 
-  const judges = [...data.judges].sort(
+  const judges = uniqueBy(data.judges, (j) => `${String(j.name ?? "").trim().toLowerCase()}|${j.stage}`).sort(
     (a, b) => Number(a.sortOrder) - Number(b.sortOrder) || String(a.stage).localeCompare(String(b.stage))
   );
-  const performances = [...data.performances].sort((a, b) =>
+  const performances = uniqueBy(data.performances, (p) => p.registrationCode).sort((a, b) =>
     String(a.code).localeCompare(String(b.code), undefined, { numeric: true })
   );
   const judgeMap = new Map(data.judges.map((j) => [j.id, j]));

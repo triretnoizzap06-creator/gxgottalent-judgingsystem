@@ -46,31 +46,33 @@ export const SEED_JUDGES = judges.map(([name, stage, sortOrder, active], i) => (
 // Audition rundown (auditiongotrundown.figma.site), slot 01 → 20.
 // `reg` is the registration code above; the app's code P01–P20 follows the
 // slot order, so every list and dropdown shows performers in rundown order.
-export const RUNDOWN_VERSION = 3;
-const R = (reg, session, slotTime, standbyTime, details, division, extra = {}) => ({
-  reg, session, slotTime, standbyTime, details, division, ...extra,
+export const RUNDOWN_VERSION = 4;
+const R = (reg, name, session, slotTime, standbyTime, details, division, extra = {}) => ({
+  reg, name, session, slotTime, standbyTime, details, division, ...extra,
 });
+// Updated rundown (start 17.10 WITA). Names, details and divisions are copied
+// exactly from auditiongotrundown.figma.site.
 export const AUDITION_RUNDOWN = [
-  R("P04", "Session 01", "17.00–17.10", "16.50", "Choir & Dance", "Divisi 14: Legal, Human Capital, Finance & Accounting, Learning & Development, dan Architecture"),
-  R("P14", "Session 01", "17.10–17.20", "17.00", "Dance", "Divisi 07: General Affairs"),
-  R("P10", "Session 01", "17.20–17.30", "17.10", "Traditional Dance", "Divisi 11: Network Administration & Network Operations"),
-  R("P11", "Session 01", "17.30–17.40", "17.20", "Dance", "Divisi 02: Fiber Optic Customer Installation"),
-  R("P02", "Session 01", "17.40–17.50", "17.30", "Band & Fashion Show", "Divisi 06: Warehouse"),
-  R("P12", "Session 01", "17.50–18.00", "17.40", "Band", "Kolaborasi Lintas Divisi (Warehouse, FO Network Upgrading, Customer Maintenance)"),
-  R("P16", "Session 01", "18.00–18.10", "17.50", "Dance", "Divisi 05: Customer Service", { name: "Pretty Chaos", title: "Dance · Pretty Chaos" }),
-  R("P08", "Session 01", "18.10–18.20", "18.00", "Singing", "Divisi 04: Fiber Optic Maintenance"),
-  R("P01", "Session 02", "18.30–18.40", "18.20", "Band", "Divisi 12: Software Development"),
-  R("P07", "Session 02", "18.40–18.50", "18.30", "Drama Musical", "Divisi 13: Sales Denpasar Utara"),
-  R("P05", "Session 02", "18.50–19.00", "18.40", "Band", "Divisi 01: Customer Maintenance"),
-  R("P17", "Session 02", "19.00–19.10", "18.50", "Traditional Dance", "Penampilan Pribadi (Warehouse)"),
-  R("P09", "Session 02", "19.10–19.20", "19.00", "Singing", "Divisi 08: Sales Badung"),
-  R("P15", "Session 02", "19.20–19.30", "19.10", "Singing", "Penampilan Pribadi (FO Customer Installation)"),
-  R("P06", "Session 02", "19.30–19.40", "19.20", "Dance", "Divisi 03: Fiber Optic Upgrading"),
-  R("P13", "Session 02", "19.40–19.50", "19.30", "Singing", "Penampilan Pribadi (Software Development)"),
-  R("P03", "Session 02", "19.50–20.00", "19.40", "Singing", "Divisi 09: Customer Technical Service"),
-  R("P19", "Session 02", "20.00–20.10", "19.50", "Band", "Kolaborasi Lintas Divisi (Customer Maintenance, Sales Denpasar Utara)"),
-  R("P20", "Session 02", "20.10–20.20", "20.00", "Traditional Dance", "Divisi 07: General Affairs"),
-  R("P18", "Session 02", "20.20–20.30", "20.10", "Choir", "Divisi 10: Sales Denpasar Selatan"),
+  R("P04", "Vokalicious", "Session 01", "17.10–17.20", "17.00", "Choir & Dance", "Divisi 14: Legal, Human Capital, Finance & Accounting, Learning & Development, dan Architecture"),
+  R("P14", "GA Xtreme", "Session 01", "17.20–17.30", "17.10", "Dance", "Divisi 07: General Affairs"),
+  R("P10", "Lia Amelia", "Session 01", "17.30–17.40", "17.20", "Traditional Dance", "Divisi 11: Network Administration & Network Operations"),
+  R("P05", "Kelompok Pemasangan Router", "Session 01", "17.40–17.50", "17.30", "Band", "Divisi 01: Customer Maintenance"),
+  R("P02", "The Rongsok Connect", "Session 01", "17.50–18.00", "17.40", "Band & Fashion Show", "Divisi 06: Warehouse"),
+  R("P17", "Sandika", "Session 01", "18.00–18.10", "17.50", "Traditional Dance", "Penampilan Pribadi (Warehouse)"),
+  R("P16", "Pretty Chaos", "Session 01", "18.10–18.20", "18.00", "Dance", "Divisi 05: Customer Service", { title: "Dance · Pretty Chaos" }),
+  R("P09", "Putu Darmawan", "Session 01", "18.20–18.30", "18.10", "Singing", "Divisi 08: Sales Badung"),
+  R("P01", "Lomba Santet", "Session 02", "18.40–18.50", "18.30", "Band", "Divisi 12: Software Development"),
+  R("P07", "Behind the Target", "Session 02", "18.50–19.00", "18.40", "Drama Musical", "Divisi 13: Sales Denpasar Utara"),
+  R("P11", "FO Auto Connect", "Session 02", "19.00–19.10", "18.50", "Dance", "Divisi 02: Fiber Optic Customer Installation"),
+  R("P08", "WO Warriors", "Session 02", "19.10–19.20", "19.00", "Singing", "Divisi 04: Fiber Optic Maintenance"),
+  R("P12", "Collaboration of Connected (CoC)", "Session 02", "19.20–19.30", "19.10", "Band", "Kolaborasi Lintas Divisi (Warehouse, FO Network Upgrading, Customer Maintenance)"),
+  R("P15", "Angga", "Session 02", "19.30–19.40", "19.20", "Singing", "Penampilan Pribadi (FO Customer Installation)"),
+  R("P18", "Berani Tampil", "Session 02", "19.40–19.50", "19.30", "Choir", "Divisi 10: Sales Denpasar Selatan"),
+  R("P13", "Devayani Dinda", "Session 02", "19.50–20.00", "19.40", "Singing", "Penampilan Pribadi (Software Development)"),
+  R("P19", "Sakoneksi Band", "Session 02", "20.00–20.10", "19.50", "Band", "Kolaborasi Lintas Divisi (Customer Maintenance, Sales Denpasar Utara)"),
+  R("P03", "Enkqi Ubay", "Session 02", "20.10–20.20", "20.00", "Singing", "Divisi 09: Customer Technical Service"),
+  R("P20", "Maha Putra", "Session 02", "20.20–20.30", "20.10", "Traditional Dance", "Divisi 07: General Affairs"),
+  R("P06", "KPOPUP", "Session 02", "20.30–20.40", "20.20", "Dance", "Divisi 03: Fiber Optic Upgrading"),
 ];
 
 // Fields the rundown sets on a performance (code + the rundown details).
@@ -82,19 +84,19 @@ export function registrationCodeFor(data, docId) {
   if (data.registrationCode) return data.registrationCode;
   const byName = performances.find((p) => norm(p[1]) === norm(data.name));
   if (byName) return byName[0];
+  const byRundownName = AUDITION_RUNDOWN.find((r) => norm(r.name) === norm(data.name));
+  if (byRundownName) return byRundownName.reg;
   const byId = performances.find((p) => p[0].toLowerCase() === String(docId).toLowerCase());
   if (byId) return byId[0];
   if (/^P\d{2}$/.test(data.code ?? "")) return data.code;
   return null;
 }
 
-export function rundownPatch(registrationCode, currentName) {
+export function rundownPatch(registrationCode) {
   const i = AUDITION_RUNDOWN.findIndex((r) => r.reg === registrationCode);
   if (i < 0) return null;
-  const { reg, name, title, ...rest } = AUDITION_RUNDOWN[i];
-  const patch = { code: `P${String(i + 1).padStart(2, "0")}`, registrationCode: reg, ...rest };
-  if (name && (currentName === undefined || currentName === "TBC")) Object.assign(patch, { name, title });
-  return patch;
+  const { reg, ...rest } = AUDITION_RUNDOWN[i];
+  return { code: `P${String(i + 1).padStart(2, "0")}`, registrationCode: reg, ...rest };
 }
 
 export const SEED_PERFORMANCES = performances
