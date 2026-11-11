@@ -1057,7 +1057,27 @@ export default function App() {
   const fullyScored = rows.filter((r) => r.judgeCount === stageJudges.length && stageJudges.length > 0).length;
   const scoredRows = rows.filter((r) => r.judgeCount);
   const averageScore = scoredRows.length ? scoredRows.reduce((t, r) => t + r.score, 0) / scoredRows.length : 0;
-  const nominations = auditionRows.filter((r) => r.nominatedBy.length);
+  // Golden Ticket rule: judges may say YES to several performances, but the one
+  // Golden Ticket can only go to a performance with YES from every active Audition judge.
+  const auditionPanel = judges.filter((j) => j.stage === "Audition" && j.active);
+  const nominations = auditionRows
+    .map((r) => {
+      const yesIds = new Set(
+        auditionScores.filter((s) => s.performanceId === r.performance.id && s.nominated).map((s) => s.judgeId)
+      );
+      const yesJudges = auditionPanel.filter((j) => yesIds.has(j.id));
+      return {
+        ...r,
+        yesJudges,
+        waitingFor: auditionPanel.filter((j) => !yesIds.has(j.id)),
+        eligible: auditionPanel.length > 0 && yesJudges.length === auditionPanel.length,
+      };
+    })
+    .filter((r) => r.yesJudges.length)
+    .sort((a, b) => b.eligible - a.eligible || b.yesJudges.length - a.yesJudges.length || b.score - a.score);
+  const eligibleCount = nominations.filter((r) => r.eligible).length;
+  const awarded = nominations.find((r) => r.performance.id === goldenTicketId);
+  const awardedStillEligible = !goldenTicketId || Boolean(awarded?.eligible);
 
   const nav =
     stage === "Audition"
@@ -1090,6 +1110,10 @@ export default function App() {
     window.setTimeout(() => setToast(""), 3200);
   }
   function awardTicket(id) {
+    if (id && !nominations.find((r) => r.performance.id === id)?.eligible) {
+      notify(`Golden Ticket needs YES from all ${auditionPanel.length} Audition judges.`);
+      return;
+    }
     startTransition(async () => {
       await setGoldenTicket(id);
       notify(id ? "Golden Ticket awarded." : "Golden Ticket revoked.");
@@ -1338,7 +1362,9 @@ export default function App() {
                           <div>
                             <p className="text-sm font-black">Golden Ticket?</p>
                             <p className="mt-1 text-xs leading-5 text-[#777777]">
-                              Would you recommend this performance for the Golden Ticket?
+                              Would you recommend this performance for the Golden Ticket? You can say Yes to more than one
+                              performance. The one Golden Ticket goes only to a performance with Yes from all{" "}
+                              {auditionPanel.length} Audition judges.
                             </p>
                           </div>
                         </div>
@@ -1411,7 +1437,7 @@ export default function App() {
             <PageTitle
               eyebrow="Audition · One pass to Main Stage"
               title="GOLDEN TICKET"
-              copy="Review the judges’ nominations, compare scores, and award one Golden Ticket."
+              copy={`One Golden Ticket. It can only be awarded to a performance that gets Yes from all ${auditionPanel.length} Audition judges.`}
             />
             <div
               className={`mb-7 flex flex-col justify-between gap-5 rounded-3xl border p-6 sm:flex-row sm:items-center ${
@@ -1434,6 +1460,11 @@ export default function App() {
                     {auditionRows.find((r) => r.performance.id === goldenTicketId)?.performance.name ??
                       "Awaiting the judges’ decision"}
                   </h2>
+                  {!awardedStillEligible && (
+                    <p className="mt-2 text-xs font-bold text-[#A32222]">
+                      No longer {auditionPanel.length}/{auditionPanel.length} Yes. A judge changed their vote. Review or revoke.
+                    </p>
+                  )}
                 </div>
               </div>
               {goldenTicketId && (
@@ -1446,26 +1477,51 @@ export default function App() {
                 </button>
               )}
             </div>
+            {eligibleCount > 1 && !goldenTicketId && (
+              <div className="mb-5 rounded-2xl border border-[#B8CCFF] bg-[#EEF2FF] p-4 text-sm text-[#244785]">
+                <strong>{eligibleCount} performances have Yes from all judges.</strong> There is only one Golden Ticket.
+                They are sorted by audition score, highest first.
+              </div>
+            )}
             <div className="grid gap-4">
               {nominations.length ? (
                 nominations.map((r) => (
-                  <article key={r.performance.id} className="rounded-3xl border border-[#E4E4E4] bg-white p-6">
+                  <article
+                    key={r.performance.id}
+                    className={`rounded-3xl border bg-white p-6 ${r.eligible ? "border-[#185C28]/30" : "border-[#E4E4E4]"}`}
+                  >
                     <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
                       <div>
-                        <span className="rounded-lg bg-[#FFF0A6] px-2.5 py-1.5 text-[10px] font-black">NOMINATED</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-lg px-2.5 py-1.5 text-[10px] font-black ${
+                              r.eligible ? "bg-[#C5F3CE] text-[#185C28]" : "bg-[#FFF0A6]"
+                            }`}
+                          >
+                            {r.yesJudges.length}/{auditionPanel.length} YES
+                          </span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[#777777]">
+                            {r.eligible ? "Eligible for Golden Ticket" : "Nominated · not eligible yet"}
+                          </span>
+                        </div>
                         <h3 className="mt-4 text-xl font-black">
                           {r.performance.code} · {r.performance.name}
                         </h3>
-                        <p className="mt-2 text-sm text-[#777777]">By {r.nominatedBy.join(", ")}</p>
+                        <p className="mt-2 text-sm text-[#777777]">Yes from {r.yesJudges.map((j) => j.name).join(", ")}</p>
+                        {!r.eligible && (
+                          <p className="mt-1 text-xs text-[#999999]">
+                            No Yes yet from {r.waitingFor.map((j) => j.name).join(", ")}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-5">
                         <p className="text-3xl font-black">{r.score.toFixed(1)}</p>
                         <button
                           onClick={() => awardTicket(r.performance.id)}
-                          disabled={!!goldenTicketId || pending}
+                          disabled={!!goldenTicketId || pending || !r.eligible}
                           className="rounded-xl bg-[#FFEC6B] px-5 py-3.5 text-xs font-black uppercase disabled:opacity-30"
                         >
-                          Award Ticket
+                          {r.eligible ? "Award Ticket" : `Needs ${auditionPanel.length}/${auditionPanel.length} Yes`}
                         </button>
                       </div>
                     </div>
