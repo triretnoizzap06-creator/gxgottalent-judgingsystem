@@ -1045,7 +1045,11 @@ export default function App() {
   );
   const draftTop = auditionRows.filter((r) => r.performance.id === goldenTicketId || r.score > 0).slice(0, 5);
   const topIds = topFiveIsManual ? topFiveIds : draftTop.map((r) => r.performance.id);
-  const finalists = topIds.map((id) => auditionRows.find((r) => r.performance.id === id)).filter((x) => !!x);
+  // Finalists are listed in running order: by their code (1–5), numeric order.
+  const finalists = topIds
+    .map((id) => auditionRows.find((r) => r.performance.id === id))
+    .filter((x) => !!x)
+    .sort((a, b) => String(a.performance.code).localeCompare(String(b.performance.code), undefined, { numeric: true }));
   const stagePerformances = stage === "Audition" ? performances : finalists.map((r) => r.performance);
   const stageJudges = judges.filter((j) => j.stage === stage && j.active);
   const stageScores = allScores.filter((s) => s.stage === stage);
